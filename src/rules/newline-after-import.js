@@ -42,9 +42,12 @@ function isClassWithDecorator(node) {
   return node.type === 'ClassDeclaration' && node.decorators && node.decorators.length
 }
 
+const EXPECTED_LINE_DIFFERENCE = 2
+
 module.exports = {
   meta: {
     docs: {},
+    fixable: 'whitespace',
     schema: [
       {
         'type': 'object',
@@ -68,20 +71,27 @@ module.exports = {
       }
 
       const options = context.options[0] || { count: 1 }
-      if (getLineDifference(node, nextNode) < options.count + 1) {
-        let column = node.loc.start.column
+      const lineDifference = getLineDifference(node, nextNode)
+      if (lineDifference < options.count + 1) {
+        if (lineDifference < EXPECTED_LINE_DIFFERENCE) {
+          let column = node.loc.start.column
 
-        if (node.loc.start.line !== node.loc.end.line) {
-          column = 0
+          if (node.loc.start.line !== node.loc.end.line) {
+            column = 0
+          }
+
+          context.report({
+            loc: {
+              line: node.loc.end.line,
+              column,
+            },
+            message: `Expected empty line after ${type} statement not followed by another ${type}.`,
+            fix: fixer => fixer.insertTextAfter(
+              node,
+              '\n'.repeat(EXPECTED_LINE_DIFFERENCE - lineDifference)
+            ),
+          })
         }
-
-        context.report({
-          loc: {
-            line: node.loc.end.line,
-            column,
-          },
-          message: `Expected empty line after ${type} statement not followed by another ${type}.`,
-        })
       }
     }
 
